@@ -1,0 +1,293 @@
+{
+  "name": "AI Agent Workflow Automation (n8n + LLM)  Lead",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        176
+      ],
+      "id": "2dffc762-83bc-4642-b8e7-6d2d8c5da7ee",
+      "name": "Webhook",
+      "webhookId": "f611b8d7-6cd1-4b8c-8ce6-d3c37ec0eea9"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\n{{ $json.prompt }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "={{ $json.prompt }}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        752,
+        176
+      ],
+      "id": "80409aba-8429-4ca1-ac3f-017b59e0e877",
+      "name": "Basic LLM Chain",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        960,
+        176
+      ],
+      "id": "e2e5a694-6b2d-427a-861e-aefcfc5db993",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "viAmgBZE0yqINVg8",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let data;\n  try {\n    // LLM output থেকে ```json ... ``` code block সরিয়ে JSON parse করা\n    const text = item.json.text || \"\";\n    const cleanedText = text.replace(/```json\\s*|\\s*```/g, \"\").trim();\n    data = JSON.parse(cleanedText);\n  } catch (e) {\n    console.log(\"Error parsing JSON:\", e, \"Raw text:\", item.json.text);\n    data = { intent: \"Unknown\" };\n  }\n\n  let reply;\n  switch(data.intent) {\n    case \"Sales\":\n      reply = `Hi ${data.name || \"\"}, thanks for your interest! Our sales team will contact you shortly.`;\n      break;\n    case \"Support\":\n      reply = `Thanks! Our support team will reach out soon.`;\n      break;\n    default:\n      reply = `Thanks for your message.`;\n  }\n\n  return {\n    json: {\n      classification: data,\n      reply\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        176
+      ],
+      "id": "c37ec105-d283-4152-a9db-d8640c0d5a59",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// যদি items না আসে, তাহলে empty array create করা\nif (typeof items === \"undefined\" || !Array.isArray(items)) {\n  items = [{ json: {} }];\n}\n\ntry {\n    // items[0].json সবসময় object হবে\n    if (typeof items[0].json !== \"object\" || items[0].json === null) {\n        items[0].json = {};\n    }\n\n    // Webhook body থেকে message নেওয়া\n    const userMessage = (items[0].json.body && items[0].json.body.message) || \"\";\n\n    items[0].json.prompt = `\nReturn ONLY valid JSON.\n\n{\n  \"intent\": \"Sales | Support | Spam\",\n  \"name\": \"\",\n  \"company\": \"\",\n  \"requirement\": \"\"\n}\n\nMessage: \"${userMessage}\"\n`;\n\n    return items;\n\n} catch (error) {\n    console.error(\"Error in Prompt Node:\", error);\n\n    return [{\n        json: {\n            error: true,\n            message: error.message,\n            stack: error.stack\n        }\n    }];\n} "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        176
+      ],
+      "id": "6bf2d7ea-5992-4d77-beba-d7159464dbfb",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "lead",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "intent": "={{ $json.classification.intent }}",
+            "name": "={{ $json.classification.name }}",
+            "company": "={{ $json.classification.company }}",
+            "requirement": "={{ $json.classification.requirement }}",
+            "reply": "={{ $json.reply }}",
+            "created_at": "2026-02-12T20:41:06"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "requirement",
+              "displayName": "requirement",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "reply",
+              "displayName": "reply",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1312,
+        176
+      ],
+      "id": "8dbe7711-8f1b-41f4-81d3-3e0fc40f953f",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "WcfNFcLczmw7zjul",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1520,
+        176
+      ],
+      "id": "3dd5aa19-467f-489b-8498-ae6fad5cdcad",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d3711a82-6ab1-453e-aa15-1bce08bf4811",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b35ac234d4855b672c632fcc44dfb46a6c4728001135e6efe3a846ae3ce90aa7"
+  },
+  "id": "pLwsadNZNUpUWteW",
+  "tags": []
+}
