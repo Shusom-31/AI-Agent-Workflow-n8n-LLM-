@@ -1,4 +1,4 @@
-# **README – Assessment 1: AI Agent Workflow Automation**
+# **README – AI Agent Workflow Automation**
 
 ## **Project Overview**
 
